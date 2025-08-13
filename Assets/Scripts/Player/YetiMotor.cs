@@ -1,8 +1,10 @@
 using UnityEngine;
 
+/// <summary>
+/// Handles player movement, jumping, hiding/unhiding, and role changes.
+/// </summary>
 [RequireComponent(typeof(Rigidbody), typeof(Collider))]
-public class YetiMotor : MonoBehaviour
-{
+public class YetiMotor : MonoBehaviour {
     public float moveSpeed = 8f;
     public float jumpForce = 6.5f;
     public float airControl = 0.6f;
@@ -17,8 +19,7 @@ public class YetiMotor : MonoBehaviour
     private bool isHidden;
     private HideableObject currentHideable;
 
-    void Awake()
-    {
+    void Awake() {
         rb = GetComponent<Rigidbody>();
         rb.constraints = RigidbodyConstraints.FreezeRotation;
         rb.mass = 1.2f;
@@ -27,57 +28,47 @@ public class YetiMotor : MonoBehaviour
         hud = FindObjectOfType<HUDController>();
     }
 
-    void FixedUpdate()
-    {
-        if (!isHidden)
-        {
+    void FixedUpdate() {
+        // Movement/jump input only when not hidden
+        if (!isHidden) {
             Vector2 input = hud != null && hud.joystick != null ? hud.joystick.Value : Vector2.zero;
             Vector3 dir = new Vector3(input.x, 0, input.y);
             float control = grounded ? 1f : airControl;
             Vector3 velocity = new Vector3(dir.x * moveSpeed * control, rb.velocity.y, dir.z * moveSpeed * control);
             rb.velocity = Vector3.Lerp(rb.velocity, velocity, 0.2f);
 
-            if (hud != null && hud.jumpBtn != null && hud.jumpBtn.Consume() && grounded)
-            {
+            if (hud != null && hud.jumpBtn != null && hud.jumpBtn.Consume() && grounded) {
                 rb.AddForce(Vector3.up * jumpForce, ForceMode.VelocityChange);
             }
 
             Vector3 face = new Vector3(rb.velocity.x, 0, rb.velocity.z);
-            if (face.sqrMagnitude > 0.05f)
-            {
+            if (face.sqrMagnitude > 0.05f) {
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(face), 0.2f);
             }
         }
 
-        if (hud != null && hud.actionBtn != null && hud.actionBtn.Consume())
-        {
-            if (isHidden)
-            {
+        // Action button for hide/unhide
+        if (hud != null && hud.actionBtn != null && hud.actionBtn.Consume()) {
+            if (isHidden) {
                 Unhide();
-            }
-            else
-            {
+            } else {
                 TryHide();
             }
         }
     }
 
-    private void TryHide()
-    {
+    private void TryHide() {
         if (role != PlayerRole.Hider) return;
         float minDist = 1.5f;
         HideableObject best = null;
-        foreach (var ho in FindObjectsOfType<HideableObject>())
-        {
+        foreach (var ho in FindObjectsOfType<HideableObject>()) {
             float d = Vector3.Distance(transform.position, ho.transform.position);
-            if (d < minDist)
-            {
+            if (d < minDist) {
                 minDist = d;
                 best = ho;
             }
         }
-        if (best != null && best.TryHide(this))
-        {
+        if (best != null && best.TryHide(this)) {
             currentHideable = best;
             isHidden = true;
             foreach (var r in renderers) r.enabled = false;
@@ -86,12 +77,10 @@ public class YetiMotor : MonoBehaviour
         }
     }
 
-    public void Unhide()
-    {
+    public void Unhide() {
         if (!isHidden) return;
         isHidden = false;
-        if (currentHideable != null)
-        {
+        if (currentHideable != null) {
             currentHideable.Unhide();
             currentHideable = null;
         }
@@ -99,32 +88,34 @@ public class YetiMotor : MonoBehaviour
         if (col != null) col.enabled = true;
     }
 
-    public void FoundBySeeker()
-    {
-        if (role == PlayerRole.Hider)
-        {
-            if (isHidden) Unhide();
-            role = PlayerRole.Seeker;
-            if (hud != null) hud.ShowBanner("You became a Seeker!");
+    /// <summary>Converts this player to a seeker role.</summary>
+    public void BecomeSeeker() {
+        if (role == PlayerRole.Seeker) return;
+        if (isHidden) Unhide();
+        role = PlayerRole.Seeker;
+        var rend = GetComponent<Renderer>();
+        if (rend) rend.material.color = new Color(1f, 0.5f, 0.5f); // red tint for seekers
+    }
+
+    /// <summary>Called when a seeker collides with the hideable.</summary>
+    public void FoundBySeeker() {
+        if (role == PlayerRole.Hider) {
+            BecomeSeeker();
+            HideSeekManager.Instance?.NotifyFound(this);
         }
     }
 
-    void OnCollisionStay(Collision c)
-    {
-        bool ground = false;
-        foreach (var cp in c.contacts)
-        {
-            if (Vector3.Dot(cp.normal, Vector3.up) > 0.5f)
-            {
-                ground = true;
+    void OnCollisionStay(Collision c) {
+        grounded = false;
+        foreach (var cp in c.contacts) {
+            if (Vector3.Dot(cp.normal, Vector3.up) > 0.5f) {
+                grounded = true;
                 break;
             }
         }
-        grounded = ground;
     }
 
-    void OnCollisionExit(Collision c)
-    {
+    void OnCollisionExit(Collision c) {
         grounded = false;
     }
 }
