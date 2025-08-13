@@ -1,66 +1,55 @@
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
 
-public class SimpleJoystick : MonoBehaviour, IDragHandler, IPointerDownHandler, IPointerUpHandler
-{
-    public RectTransform knob;
-    public RectTransform background;
+public class SimpleJoystick : MonoBehaviour {
     public Vector2 Value { get; private set; }
+    RectTransform knob, bg;
+    bool dragging;
 
-    private Canvas canvas;
-    private float radius;
+    public static SimpleJoystick Create(Canvas parent, Vector2 anchor, Vector2 offset) {
+        var root = new GameObject("Joystick", typeof(Image));
+        root.transform.SetParent(parent.transform, false);
+        var bgImg = root.GetComponent<Image>();
+        bgImg.color = new Color(0f, 0f, 0f, 0.25f);
+        var rt = root.GetComponent<RectTransform>();
+        rt.anchorMin = anchor; rt.anchorMax = anchor; rt.anchoredPosition = offset; rt.sizeDelta = new Vector2(200, 200);
 
-    public static SimpleJoystick Create(Canvas parent)
-    {
-        var go = new GameObject("Joystick");
-        go.transform.SetParent(parent.transform, false);
-        var j = go.AddComponent<SimpleJoystick>();
+        var knobGO = new GameObject("Knob", typeof(Image));
+        knobGO.transform.SetParent(root.transform, false);
+        var kImg = knobGO.GetComponent<Image>();
+        kImg.color = new Color(1f, 1f, 1f, 0.9f);
+        var krt = knobGO.GetComponent<RectTransform>();
+        krt.sizeDelta = new Vector2(90, 90);
 
-        var bg = new GameObject("BG", typeof(Image)).GetComponent<Image>();
-        bg.transform.SetParent(go.transform, false);
-        bg.color = new Color(1, 1, 1, 0.15f);
-        bg.raycastTarget = true;
-        j.background = bg.rectTransform;
-
-        var kb = new GameObject("Knob", typeof(Image)).GetComponent<Image>();
-        kb.transform.SetParent(bg.transform, false);
-        kb.color = new Color(1, 1, 1, 0.35f);
-        j.knob = kb.rectTransform;
-
-        var rect = j.GetComponent<RectTransform>() ?? go.AddComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0, 0);
-        rect.anchorMax = new Vector2(0, 0);
-        rect.pivot = new Vector2(0, 0);
-        rect.anchoredPosition = new Vector2(30, 30);
-        rect.sizeDelta = new Vector2(160, 160);
-
-        j.background.anchorMin = Vector2.zero;
-        j.background.anchorMax = Vector2.one;
-        j.background.offsetMin = Vector2.zero;
-        j.background.offsetMax = Vector2.zero;
-
-        j.knob.sizeDelta = new Vector2(60, 60);
-        j.knob.anchoredPosition = Vector2.zero;
-
-        j.canvas = parent;
-        j.radius = 70f;
+        var j = root.AddComponent<SimpleJoystick>();
+        j.bg = rt; j.knob = krt;
         return j;
     }
 
-    public void OnPointerDown(PointerEventData eventData) => OnDrag(eventData);
+    void Update() {
+        // Editor keyboard fallback (WASD/Arrow keys)
+        #if UNITY_EDITOR
+        var kx = Input.GetAxisRaw("Horizontal");
+        var ky = Input.GetAxisRaw("Vertical");
+        if (Mathf.Abs(kx) > 0.01f || Mathf.Abs(ky) > 0.01f) {
+            Value = new Vector2(kx, ky).normalized;
+            knob.anchoredPosition = Value * (bg.sizeDelta * 0.5f * 0.8f);
+            return;
+        }
+        #endif
 
-    public void OnDrag(PointerEventData eventData)
-    {
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(background, eventData.position, canvas.worldCamera, out var pos);
-        var v = Vector2.ClampMagnitude(pos / radius, 1f);
-        Value = v;
-        knob.anchoredPosition = v * radius;
-    }
-
-    public void OnPointerUp(PointerEventData eventData)
-    {
-        Value = Vector2.zero;
-        knob.anchoredPosition = Vector2.zero;
+        if (Input.GetMouseButtonDown(0)) {
+            Vector2 m = Input.mousePosition;
+            if (RectTransformUtility.RectangleContainsScreenPoint(bg, m)) dragging = true;
+        }
+        if (Input.GetMouseButtonUp(0)) { dragging = false; Value = Vector2.zero; knob.anchoredPosition = Vector2.zero; }
+        if (dragging) {
+            Vector2 m = Input.mousePosition;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(bg, m, null, out var lp);
+            var radius = bg.sizeDelta * 0.5f * 0.8f;
+            lp = Vector2.Max(-radius, Vector2.Min(radius, lp));
+            knob.anchoredPosition = lp;
+            Value = lp / radius;
+        }
     }
 }
