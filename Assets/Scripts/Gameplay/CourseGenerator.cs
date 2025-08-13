@@ -19,8 +19,7 @@ public class CourseGenerator : MonoBehaviour {
 
         float z = 8f;
         for (int i = 0; i < lengthChunks; i++) {
-            // 0 spinner, 1 bumper row, 2 gap, 3 snowball, 4 ice slide
-            int type = Random.Range(0, 5);
+            int type = Random.Range(0, 5); // 0 spinner, 1 bumper row, 2 gap, 3 snowball, 4 ice slide
             if (type == 0) {
                 var sp = new GameObject($"Spinner_{i}");
                 sp.transform.position = new Vector3(0, 1.25f, z);
@@ -79,7 +78,14 @@ public class CourseGenerator : MonoBehaviour {
         var finishGO = new GameObject("FinishLine");
         finishGO.transform.position = new Vector3(0, 0f, z + 2f);
         var fl = finishGO.AddComponent<FinishLine>();
-        FindObjectOfType<RoundManager>()?.RegisterFinish(fl);
+
+        // Add trigger collider for finish detection
+        var bc = finishGO.AddComponent<BoxCollider>();
+        bc.isTrigger = true;
+        bc.size = new Vector3(lanes * laneWidth, 2f, 1f);
+
+        var rm = Object.FindFirstObjectByType<RoundManager>();
+        rm?.RegisterFinish(fl);
 
         var left = GameObject.CreatePrimitive(PrimitiveType.Cube);
         left.transform.localScale = new Vector3(0.5f, 4f, z + 8f);
