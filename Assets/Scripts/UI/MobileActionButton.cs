@@ -17,15 +17,14 @@ public class MobileActionButton : MonoBehaviour {
         tgo.transform.SetParent(go.transform, false);
         var t = tgo.GetComponent<Text>();
         t.text = "HIDE"; t.alignment = TextAnchor.MiddleCenter; t.fontSize = 28; t.color = Color.white;
-        t.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+        t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         var trt = tgo.GetComponent<RectTransform>(); trt.sizeDelta = rt.sizeDelta;
 
         return go.AddComponent<MobileActionButton>();
     }
 
-    public bool Consume() { if (pressed) { pressed = false; return true; } return false; }
-    void Update() {
-        // 'E' key works in Editor
+    public bool Consume(){ if(pressed){ pressed=false; return true; } return false; }
+    void Update(){
         #if UNITY_EDITOR
         if (Input.GetKeyDown(KeyCode.E)) pressed = true;
         #endif

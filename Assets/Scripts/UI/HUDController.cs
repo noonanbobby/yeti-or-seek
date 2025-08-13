@@ -7,9 +7,17 @@ public class HUDController : MonoBehaviour {
     public MobileActionButton actionBtn;
 
     Text bannerText, infoText, flakesText;
+    Font UiFont;
 
     void Awake() {
         Debug.Log("[HUD] HUDController.Awake()");
+
+        // Font for Unity 6+ (Arial builtin removed)
+        UiFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        if (UiFont == null) {
+            // Fallback to a system font to be extra safe in Editor
+            try { UiFont = Font.CreateDynamicFontFromOSFont("Helvetica", 16); } catch { }
+        }
 
         // Canvas
         var canvasGO = new GameObject("Canvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
@@ -62,7 +70,8 @@ public class HUDController : MonoBehaviour {
         var go = new GameObject("Text", typeof(Text));
         go.transform.SetParent(parent, false);
         var t = go.GetComponent<Text>();
-        t.text = txt; t.fontSize = size; t.alignment = anchor; t.font = Resources.GetBuiltinResource<Font>("Arial.ttf"); t.color = color;
+        t.text = txt; t.fontSize = size; t.alignment = anchor; t.color = color;
+        t.font = UiFont;
         var rt = go.GetComponent<RectTransform>(); rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
         return t;
     }

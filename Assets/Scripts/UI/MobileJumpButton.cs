@@ -17,15 +17,14 @@ public class MobileJumpButton : MonoBehaviour {
         tgo.transform.SetParent(go.transform, false);
         var t = tgo.GetComponent<Text>();
         t.text = "JUMP"; t.alignment = TextAnchor.MiddleCenter; t.fontSize = 28; t.color = Color.white;
-        t.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+        t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         var trt = tgo.GetComponent<RectTransform>(); trt.sizeDelta = rt.sizeDelta;
 
         return go.AddComponent<MobileJumpButton>();
     }
 
-    public bool Consume() { if (pressed) { pressed = false; return true; } return false; }
-    void Update() {
-        // Space key works in Editor
+    public bool Consume(){ if(pressed){ pressed=false; return true; } return false; }
+    void Update(){
         #if UNITY_EDITOR
         if (Input.GetKeyDown(KeyCode.Space)) pressed = true;
         #endif
