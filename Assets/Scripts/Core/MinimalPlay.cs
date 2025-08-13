@@ -3,61 +3,69 @@ using UnityEngine.EventSystems;
 using System.Collections.Generic;
 
 public class MinimalPlay : MonoBehaviour {
-    [Range(0,8)] public int botCount = 3;
+    [Range(0,15)] public int botCount = 6;
 
     void Start() {
         // Camera
         var cam = Camera.main;
-        if (cam == null) {
-            var c = new GameObject("Main Camera");
-            cam = c.AddComponent<Camera>(); cam.tag="MainCamera";
-            c.AddComponent<AudioListener>();
-            c.transform.position = new Vector3(0, 8, -10); c.transform.LookAt(Vector3.zero);
-        }
-        cam.backgroundColor = new Color(0.72f, 0.75f, 0.80f);
+        if (cam == null) { var c=new GameObject("Main Camera"); cam=c.AddComponent<Camera>(); cam.tag="MainCamera"; c.AddComponent<AudioListener>(); c.transform.position=new Vector3(0,10,-14); c.transform.LookAt(Vector3.zero); }
+        cam.backgroundColor = Theme.Sky;
 
         // HUD
-        var hud = Object.FindFirstObjectByType<HUDController>() ?? new GameObject("HUD").AddComponent<HUDController>();
+        var hud = FindFirstObjectByType<HUDController>() ?? new GameObject("HUD").AddComponent<HUDController>();
 
         // Manager
-        var mgr = HideSeekManager.Instance ?? Object.FindFirstObjectByType<HideSeekManager>() ?? new GameObject("HideSeekManager").AddComponent<HideSeekManager>();
-        mgr.roundDuration = 90f;
+        var mgr = HideSeekManager.Instance ?? FindFirstObjectByType<HideSeekManager>() ?? new GameObject("HideSeekManager").AddComponent<HideSeekManager>();
+        mgr.roundDuration = 90f; mgr.hidePhaseSeconds = 20f;
 
         // Player
-        var players = new List<YetiMotor>(Object.FindObjectsByType<YetiMotor>(FindObjectsInactive.Exclude, FindObjectsSortMode.None));
-        if (players.Count == 0) {
-            var p = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            p.name = "PlayerYeti"; p.transform.position = new Vector3(0, 1, 0);
-            var rb = p.AddComponent<Rigidbody>(); rb.constraints = RigidbodyConstraints.FreezeRotation;
-            var motor = p.AddComponent<YetiMotor>();
-            var r = p.GetComponent<Renderer>(); if (r) r.material.color = new Color(0.6f, 0.8f, 1f);
-            players.Add(motor);
-        }
-
-        // Optional bots (simple wandering for now)
-        for (int i=0;i<botCount;i++){
-            var b = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            b.name = $"Bot_{i}"; b.transform.position = new Vector3(Random.Range(-4f,4f),1,Random.Range(-4f,4f));
-            var rb = b.AddComponent<Rigidbody>(); rb.constraints = RigidbodyConstraints.FreezeRotation;
-            var m  = b.AddComponent<YetiMotor>();
-            var r = b.GetComponent<Renderer>(); if (r) r.material.color = new Color(0.85f, 0.9f, 1f);
-            b.AddComponent<SimpleBotAI>();
+        var players = new List<YetiMotor>(FindObjectsByType<YetiMotor>(FindObjectsInactive.Exclude, FindObjectsSortMode.None));
+        if (players.Count==0){
+            var p = GameObject.CreatePrimitive(PrimitiveType.Capsule); p.name="PlayerYeti"; p.transform.position=new Vector3(0,1,0);
+            var rb = p.AddComponent<Rigidbody>(); rb.constraints=RigidbodyConstraints.FreezeRotation;
+            var m  = p.AddComponent<YetiMotor>();
+            var r  = p.GetComponent<Renderer>(); if(r) r.material.color = Theme.Accent;
             players.Add(m);
         }
 
-        // Camera follow human
+        // Bots
+        for(int i=0;i<botCount;i++){
+            var b = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            b.name=$"Bot_{i}";
+            b.transform.position = new Vector3(Random.Range(-8f,8f),1,Random.Range(-8f,8f));
+            var rb = b.AddComponent<Rigidbody>(); rb.constraints=RigidbodyConstraints.FreezeRotation;
+            var m  = b.AddComponent<YetiMotor>();
+            var r  = b.GetComponent<Renderer>(); if(r) r.material.color = (i%2==0)? Theme.Primary : Theme.Warn;
+            players.Add(m);
+        }
+
+        // One bot becomes seeker (AI), rest are hiders (AI)
+        if (players.Count>1){
+            var allGOs = FindObjectsByType<YetiMotor>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            // Choose a non-player as seeker
+            foreach(var go in allGOs){
+                if (go.gameObject.name.StartsWith("Bot_")){ go.gameObject.AddComponent<SeekerBotAI>(); break; }
+            }
+            foreach(var go in allGOs){
+                if (!go.gameObject.GetComponent<SeekerBotAI>()) go.gameObject.AddComponent<SimpleBotAI>();
+            }
+            mgr.startSeekerCount = 1;
+        } else {
+            mgr.startSeekerCount = 0; // solo sandbox
+        }
+
+        // Camera follow the player
         var follow = cam.GetComponent<CameraFollow>() ?? cam.gameObject.AddComponent<CameraFollow>();
-        follow.target = players[0].transform; follow.offset=new Vector3(0,7,-8); follow.smoothTime=0.15f;
+        follow.target = players[0].transform; follow.offset=new Vector3(0,8,-10); follow.smoothTime=0.15f;
 
         // EventSystem
-        if (Object.FindFirstObjectByType<EventSystem>() == null) { var es = new GameObject("EventSystem"); es.AddComponent<EventSystem>(); es.AddComponent<StandaloneInputModule>(); }
+        if (FindFirstObjectByType<EventSystem>() == null){ var es=new GameObject("EventSystem"); es.AddComponent<EventSystem>(); es.AddComponent<StandaloneInputModule>(); }
 
         // Arena
-        var arena = Object.FindFirstObjectByType<HideSeekGenerator>() ?? new GameObject("Arena").AddComponent<HideSeekGenerator>();
-        arena.areaSize = new Vector2(24f,24f); arena.hideObjectCount = 10; arena.Generate();
+        var arena = FindFirstObjectByType<HideSeekGenerator>() ?? new GameObject("Arena").AddComponent<HideSeekGenerator>();
+        arena.areaSize = new Vector2(24,24); arena.hideObjectCount=12; arena.Generate();
 
-        // Round
-        mgr.startSeekerCount = Mathf.Clamp(players.Count > 1 ? 1 : 0, 0, players.Count-1);
+        // Start round
         mgr.Setup(players, hud);
     }
 }

@@ -6,61 +6,58 @@ public class HUDController : MonoBehaviour {
     public MobileJumpButton jumpBtn;
     public MobileActionButton actionBtn;
 
-    Text bannerText, infoText, flakesText;
+    Text titleText, objectiveText, timerText, hidersText, flakesText;
     Font UiFont;
 
     void Awake() {
-        // Use Unity 6 builtin font + fallback
         UiFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        if (UiFont == null) { try { UiFont = Font.CreateDynamicFontFromOSFont("Helvetica", 16);} catch {} }
 
-        // Canvas
         var canvasGO = new GameObject("Canvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
         canvasGO.transform.SetParent(transform, false);
-        var canvas = canvasGO.GetComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        var scaler = canvasGO.GetComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920, 1080);
+        var canvas = canvasGO.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        var scaler = canvasGO.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize; scaler.referenceResolution=new Vector2(1920,1080);
 
-        // Banner
-        var bannerBg = Box(canvasGO.transform, new Color(0.06f,0.20f,0.55f,0.95f), anchorMin:new Vector2(0,1), anchorMax:new Vector2(1,1), size:new Vector2(0,72), pos:new Vector2(0,-36));
-        bannerText = MakeText(bannerBg.transform, "Yeti & Seek", 34, TextAnchor.MiddleCenter, Color.white, UiFont, outline:true);
+        // Top bar
+        var topBar = Box(canvasGO.transform, Theme.Primary, new Vector2(0,1), new Vector2(1,1), new Vector2(0,88), new Vector2(0,-44));
+        titleText     = MakeText(topBar.transform, "Yeti & Seek", 40, TextAnchor.MiddleLeft, Color.white, UiFont, new Vector2(24,0), alignRight:false);
+        timerText     = MakeText(topBar.transform, "90", 40, TextAnchor.MiddleRight, Color.white, UiFont, new Vector2(-24,0), alignRight:true);
 
-        // Info (top-left) + Flakes (top-right)
-        var infoBG = Box(canvasGO.transform, new Color(1,1,1,0.7f), new Vector2(0,1), new Vector2(0,1), new Vector2(520,56), new Vector2(16,-96));
-        infoText   = MakeText(infoBG.transform, "Move: WASD/←→↑↓ | Space: Jump | E: Hide", 20, TextAnchor.MiddleLeft, Color.black, UiFont, outline:false);
+        // Objective + Hiders left (below bar)
+        var infoStrip = Box(canvasGO.transform, Theme.UIBack, new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(960,60), new Vector2(0,-140));
+        objectiveText = MakeText(infoStrip.transform, "HIDE PHASE", 26, TextAnchor.MiddleCenter, Theme.UIText, UiFont, Vector2.zero, false);
 
-        var flakesBG = Box(canvasGO.transform, new Color(1,1,1,0.7f), new Vector2(1,1), new Vector2(1,1), new Vector2(220,56), new Vector2(-16,-96));
-        flakesText = MakeText(flakesBG.transform, "❄ 0", 22, TextAnchor.MiddleRight, Color.black, UiFont, outline:false);
+        var hiderPanel = Box(canvasGO.transform, Theme.UIBack, new Vector2(0,1), new Vector2(0,1), new Vector2(300,60), new Vector2(180,-140));
+        hidersText = MakeText(hiderPanel.transform, "Hiders: -", 24, TextAnchor.MiddleCenter, Theme.UIText, UiFont, Vector2.zero, false);
+
+        var flakesPanel = Box(canvasGO.transform, Theme.UIBack, new Vector2(1,1), new Vector2(1,1), new Vector2(220,60), new Vector2(-180,-140));
+        flakesText = MakeText(flakesPanel.transform, "❄ 0", 24, TextAnchor.MiddleCenter, Theme.UIText, UiFont, Vector2.zero, false);
 
         // Controls
-        joystick = SimpleJoystick.Create(canvas, new Vector2(0,0), new Vector2(170,170));
-        jumpBtn  = MobileJumpButton.Create(canvas, new Vector2(1,0), new Vector2(-150,170));
-        actionBtn= MobileActionButton.Create(canvas, new Vector2(1,0), new Vector2(-320,170));
+        joystick = SimpleJoystick.Create(canvas, new Vector2(0,0), new Vector2(180,180));
+        jumpBtn  = MobileJumpButton.Create(canvas, new Vector2(1,0), new Vector2(-160,180));
+        actionBtn= MobileActionButton.Create(canvas, new Vector2(1,0), new Vector2(-330,180));
     }
 
-    RectTransform Box(Transform parent, Color c, Vector2 anchorMin, Vector2 anchorMax, Vector2 size, Vector2 pos) {
+    RectTransform Box(Transform parent, Color c, Vector2 min, Vector2 max, Vector2 size, Vector2 pos){
         var go = new GameObject("Box", typeof(Image));
-        go.transform.SetParent(parent, false);
+        go.transform.SetParent(parent,false);
         var img = go.GetComponent<Image>(); img.color = c;
-        var rt = go.GetComponent<RectTransform>(); rt.anchorMin=anchorMin; rt.anchorMax=anchorMax; rt.sizeDelta=size; rt.anchoredPosition=pos;
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin=min; rt.anchorMax=max; rt.sizeDelta=size; rt.anchoredPosition=pos;
         return rt;
     }
-
-    Text MakeText(Transform parent, string txt, int size, TextAnchor anchor, Color color, Font font, bool outline) {
+    Text MakeText(Transform parent,string txt,int size,TextAnchor anchor,Color color,Font font,Vector2 pad,bool alignRight){
         var go = new GameObject("Text", typeof(Text));
-        go.transform.SetParent(parent, false);
-        var t = go.GetComponent<Text>();
-        t.text = txt; t.fontSize = size; t.alignment = anchor; t.color = color; t.font = font;
-        var rt = go.GetComponent<RectTransform>(); rt.anchorMin=Vector2.zero; rt.anchorMax=Vector2.one; rt.offsetMin=Vector2.zero; rt.offsetMax=Vector2.zero;
-        if (outline) go.AddComponent<Outline>().effectDistance = new Vector2(2, -2);
+        go.transform.SetParent(parent,false);
+        var t = go.GetComponent<Text>(); t.text=txt; t.fontSize=size; t.alignment=anchor; t.color=color; t.font=font;
+        var rt = go.GetComponent<RectTransform>(); rt.anchorMin=Vector2.zero; rt.anchorMax=Vector2.one; rt.offsetMin=new Vector2(16+pad.x,8); rt.offsetMax=new Vector2(-16+pad.x,-8);
+        if(alignRight){ var o = go.AddComponent<Outline>(); o.effectDistance=new Vector2(2,-2); }
         return t;
     }
 
-    public void UpdateInfo(string s){ if(infoText) infoText.text = s; }
-    public void ShowBanner(string s){ if(bannerText) bannerText.text = s; }
-    public void ShowResult(string s){ ShowBanner(s); }
-    public void UpdateFlakes(int amount){ if(flakesText) flakesText.text = $"❄ {amount}"; }
-    public void SetupBasicHUD() { /* compatibility hook */ }
+    public void SetObjective(string s){ if(objectiveText) objectiveText.text=s; }
+    public void SetTimer(int seconds){ if(timerText) timerText.text = seconds.ToString(); }
+    public void SetHiders(int n){ if(hidersText) hidersText.text=$"Hiders: {n}"; }
+    public void UpdateFlakes(int amount){ if(flakesText) flakesText.text=$"❄ {amount}"; }
+    public void SetupBasicHUD() {}
 }
