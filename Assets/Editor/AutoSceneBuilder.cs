@@ -1,44 +1,37 @@
 #if UNITY_EDITOR
+using System.Linq;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
-using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using System.IO;
 
-public class AutoSceneBuilder : IPreprocessBuildWithReport
+public sealed class AutoSceneBuilder : IPreprocessBuildWithReport
 {
     public int callbackOrder => 0;
 
-    public void PreprocessBuild(BuildReport report)
+    // Unity 2018.1+ signature
+    public void OnPreprocessBuild(BuildReport report)
     {
-        const string dir = "Assets/Auto";
-        const string scenePath = dir + "/AutoScene.unity";
-        if (!AssetDatabase.IsValidFolder(dir)) AssetDatabase.CreateFolder("Assets", "Auto");
+        // Ensure our test scene is included in build settings if it exists
+        var desired = new[] { "Assets/Scenes/HideSeek_Test.unity" };
 
-        var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+        var existing = EditorBuildSettings.scenes?.Select(s => s.path).ToList() ?? new System.Collections.Generic.List<string>();
+        var updated = existing.ToList();
 
-        // EventSystem
-        var es = new GameObject("EventSystem");
-        es.AddComponent<EventSystem>();
-        es.AddComponent<StandaloneInputModule>();
+        foreach (var path in desired)
+        {
+            if (System.IO.File.Exists(path) && !existing.Contains(path))
+            {
+                updated.Add(path);
+                Debug.Log($"AutoSceneBuilder: Added to Build Settings: {path}");
+            }
+        }
 
-        // Bootstrap
-        var boot = new GameObject("GameBootstrap");
-        boot.AddComponent<GameBootstrap>();
-
-        // Camera (will be re-parented by GameBootstrap)
-        var cam = new GameObject("MainCamera");
-        var camera = cam.AddComponent<Camera>();
-        camera.clearFlags = CameraClearFlags.Skybox;
-        cam.tag = "MainCamera";
-
-        EditorSceneManager.SaveScene(scene, scenePath);
-        AssetDatabase.SaveAssets();
-
-        EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(scenePath, true) };
-        Debug.Log("[AutoSceneBuilder] AutoScene created and added to Build Settings: " + scenePath);
+        if (!updated.SequenceEqual(existing))
+        {
+            EditorBuildSettings.scenes = updated.Select(p => new EditorBuildSettingsScene(p, true)).ToArray();
+            AssetDatabase.SaveAssets();
+        }
     }
 }
 #endif
