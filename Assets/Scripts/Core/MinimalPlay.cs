@@ -4,9 +4,19 @@ using System.Collections.Generic;
 
 public class MinimalPlay : MonoBehaviour {
     void Start() {
-        // Nicer look
-        RenderSettings.ambientLight = new Color(0.85f, 0.9f, 1f);
-        Camera.main?.GetComponent<Camera>()?.backgroundColor.Equals(new Color(0.7f,0.72f,0.76f));
+        Debug.Log("[Boot] MinimalPlay.Start()");
+
+        // Camera setup and nicer background
+        var cam = Camera.main;
+        if (cam == null) {
+            var c = new GameObject("Main Camera");
+            cam = c.AddComponent<Camera>();
+            cam.tag = "MainCamera";
+            c.AddComponent<AudioListener>();
+            c.transform.position = new Vector3(0, 8, -10);
+            c.transform.LookAt(Vector3.zero);
+        }
+        cam.backgroundColor = new Color(0.72f, 0.75f, 0.80f);
 
         // HUD
         var hud = Object.FindFirstObjectByType<HUDController>();
@@ -27,22 +37,11 @@ public class MinimalPlay : MonoBehaviour {
             var rb = p.AddComponent<Rigidbody>();
             rb.constraints = RigidbodyConstraints.FreezeRotation;
             var motor = p.AddComponent<YetiMotor>();
-            // Tint the yeti a soft blue
-            var r = p.GetComponent<Renderer>();
-            if (r) r.material.color = new Color(0.6f, 0.8f, 1f);
+            var r = p.GetComponent<Renderer>(); if (r) r.material.color = new Color(0.6f, 0.8f, 1f);
             players.Add(motor);
         }
 
-        // Camera
-        var cam = Camera.main;
-        if (cam == null) {
-            var c = new GameObject("Main Camera");
-            cam = c.AddComponent<Camera>();
-            cam.tag = "MainCamera";
-            c.AddComponent<AudioListener>();
-            c.transform.position = new Vector3(0, 8, -10);
-            c.transform.LookAt(Vector3.zero);
-        }
+        // Camera follow
         var follow = cam.GetComponent<CameraFollow>() ?? cam.gameObject.AddComponent<CameraFollow>();
         follow.target = players[0].transform;
         follow.offset = new Vector3(0, 7, -8);
