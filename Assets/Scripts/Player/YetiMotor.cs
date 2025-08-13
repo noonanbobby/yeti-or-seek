@@ -25,13 +25,12 @@ public class YetiMotor : MonoBehaviour {
         rb.mass = 1.2f;
         col = GetComponent<Collider>();
         renderers = GetComponentsInChildren<Renderer>(true);
-        hud = FindObjectOfType<HUDController>();
+        hud = Object.FindFirstObjectByType<HUDController>();
     }
 
     void FixedUpdate() {
-        // Movement/jump input only when not hidden
         if (!isHidden) {
-            Vector2 input = hud != null && hud.joystick != null ? hud.joystick.Value : Vector2.zero;
+            Vector2 input = (hud != null && hud.joystick != null) ? hud.joystick.Value : Vector2.zero;
             Vector3 dir = new Vector3(input.x, 0, input.y);
             float control = grounded ? 1f : airControl;
             Vector3 velocity = new Vector3(dir.x * moveSpeed * control, rb.velocity.y, dir.z * moveSpeed * control);
@@ -49,11 +48,8 @@ public class YetiMotor : MonoBehaviour {
 
         // Action button for hide/unhide
         if (hud != null && hud.actionBtn != null && hud.actionBtn.Consume()) {
-            if (isHidden) {
-                Unhide();
-            } else {
-                TryHide();
-            }
+            if (isHidden) Unhide();
+            else TryHide();
         }
     }
 
@@ -61,12 +57,9 @@ public class YetiMotor : MonoBehaviour {
         if (role != PlayerRole.Hider) return;
         float minDist = 1.5f;
         HideableObject best = null;
-        foreach (var ho in FindObjectsOfType<HideableObject>()) {
+        foreach (var ho in Object.FindObjectsByType<HideableObject>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)) {
             float d = Vector3.Distance(transform.position, ho.transform.position);
-            if (d < minDist) {
-                minDist = d;
-                best = ho;
-            }
+            if (d < minDist) { minDist = d; best = ho; }
         }
         if (best != null && best.TryHide(this)) {
             currentHideable = best;
@@ -80,10 +73,7 @@ public class YetiMotor : MonoBehaviour {
     public void Unhide() {
         if (!isHidden) return;
         isHidden = false;
-        if (currentHideable != null) {
-            currentHideable.Unhide();
-            currentHideable = null;
-        }
+        if (currentHideable != null) { currentHideable.Unhide(); currentHideable = null; }
         foreach (var r in renderers) r.enabled = true;
         if (col != null) col.enabled = true;
     }
@@ -94,7 +84,7 @@ public class YetiMotor : MonoBehaviour {
         if (isHidden) Unhide();
         role = PlayerRole.Seeker;
         var rend = GetComponent<Renderer>();
-        if (rend) rend.material.color = new Color(1f, 0.5f, 0.5f); // red tint for seekers
+        if (rend) rend.material.color = new Color(1f, 0.5f, 0.5f); // red tint
     }
 
     /// <summary>Called when a seeker collides with the hideable.</summary>
@@ -108,14 +98,9 @@ public class YetiMotor : MonoBehaviour {
     void OnCollisionStay(Collision c) {
         grounded = false;
         foreach (var cp in c.contacts) {
-            if (Vector3.Dot(cp.normal, Vector3.up) > 0.5f) {
-                grounded = true;
-                break;
-            }
+            if (Vector3.Dot(cp.normal, Vector3.up) > 0.5f) { grounded = true; break; }
         }
     }
 
-    void OnCollisionExit(Collision c) {
-        grounded = false;
-    }
+    void OnCollisionExit(Collision c) { grounded = false; }
 }

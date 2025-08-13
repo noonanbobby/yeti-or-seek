@@ -1,18 +1,22 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 using System.Collections.Generic;
 
 public class HideSeekBootstrapper : MonoBehaviour {
     void Start() {
-        // HUD
-        var hud = FindObjectOfType<HUDController>();
-        if (hud == null) hud = new GameObject("HUD").AddComponent<HUDController>();
+        // HUD (create if missing)
+        var hud = Object.FindFirstObjectByType<HUDController>();
+        if (hud == null) {
+            hud = new GameObject("HUD").AddComponent<HUDController>();
+            hud.SetupBasicHUD(); // no-op placeholder, keeps GameBootstrap happy if it calls it
+        }
 
-        // Manager
-        var mgr = HideSeekManager.Instance ?? FindObjectOfType<HideSeekManager>();
+        // Manager (create if missing)
+        var mgr = HideSeekManager.Instance ?? Object.FindFirstObjectByType<HideSeekManager>();
         if (mgr == null) mgr = new GameObject("HideSeekManager").AddComponent<HideSeekManager>();
 
         // Players (spawn 1 if none)
-        var players = new List<YetiMotor>(FindObjectsOfType<YetiMotor>());
+        var players = new List<YetiMotor>(Object.FindObjectsByType<YetiMotor>(FindObjectsInactive.Exclude, FindObjectsSortMode.None));
         if (players.Count == 0) {
             var playerGO = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             playerGO.name = "PlayerYeti";
@@ -38,16 +42,17 @@ public class HideSeekBootstrapper : MonoBehaviour {
         follow.offset = new Vector3(0, 7, -8);
         follow.smoothTime = 0.15f;
 
-        // EventSystem (for UGUI)
-        if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null) {
+        // EventSystem
+        if (Object.FindFirstObjectByType<EventSystem>() == null) {
             var es = new GameObject("EventSystem");
-            es.AddComponent<UnityEngine.EventSystems.EventSystem>();
-            es.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+            es.AddComponent<EventSystem>();
+            es.AddComponent<StandaloneInputModule>();
         }
 
-        // Arena generator (for hideables/walls)
-        var gen = FindObjectOfType<HideSeekGenerator>();
+        // Arena generator (create + generate if missing)
+        var gen = Object.FindFirstObjectByType<HideSeekGenerator>();
         if (gen == null) gen = new GameObject("Arena").AddComponent<HideSeekGenerator>();
+        gen.Generate();
 
         // If only 1 player, don't assign a seeker at round start
         mgr.startSeekerCount = Mathf.Min(mgr.startSeekerCount, Mathf.Max(0, players.Count - 1));
