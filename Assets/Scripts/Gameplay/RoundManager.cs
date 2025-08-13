@@ -19,7 +19,7 @@ public class RoundManager : MonoBehaviour {
     // This MUST match Action<YetiMotor>
     private void OnAnyFinish(YetiMotor motor) {
         finishCount++;
-        // Tiny reward & feedback so you can see it working
+        // Reward & feedback so you can see it working
         CurrencyManager.AddFlakes(10);
         CurrencyManager.Save();
         hud?.ShowBanner($"Finish reached! (+10 flakes)  Total finishes: {finishCount}");
